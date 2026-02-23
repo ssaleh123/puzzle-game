@@ -92,7 +92,7 @@ func resetBoards() {
 			state.Players[p].Board[i/3][i%3] = 0
 		}
 	}
-	state.CurrentImage = (state.CurrentImage + 1) % 3
+	state.CurrentImage = (state.CurrentImage + 1) % 16
 }
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
@@ -184,4 +184,5 @@ func main() {
 	log.Println("Server running on port", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
+
 
