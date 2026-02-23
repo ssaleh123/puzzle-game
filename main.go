@@ -173,7 +173,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	initGame()
 
-	http.Handle("/", http.FileServer(http.Dir("./public")))
+	http.Handle("/", http.FileServer(http.Dir(".")))
 	http.HandleFunc("/ws", wsHandler)
 
 	port := os.Getenv("PORT")
@@ -184,3 +184,4 @@ func main() {
 	log.Println("Server running on port", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
+
