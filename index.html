@@ -37,7 +37,11 @@ body { margin:0; background:#222; color:white; font-family:sans-serif; }
 <script>
 window.addEventListener('DOMContentLoaded', () => {
 
-const images = ["/static/caseoh.jfif","/static/moist_critical.jfif","/static/clix.jfif","/static/amouranth.jfif", "/static/mongraal.jfif","/static/myth.jfif"];
+const images = [
+  "https://raw.githubusercontent.com/ssaleh123/puzzle-game/main/TimTheTatMan.jfif",
+  "https://raw.githubusercontent.com/ssaleh123/puzzle-game/main/amouranth.jfif",
+  "https://raw.githubusercontent.com/ssaleh123/puzzle-game/main/Pokimane.jpg"
+];
 let state = null;
 let ws = null;
 let lastImage = -1; // track when image changes
@@ -167,4 +171,5 @@ connectWebSocket();
 </script>
 
 </body>
+
 </html>
