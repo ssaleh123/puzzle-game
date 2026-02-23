@@ -44,13 +44,12 @@ const images = [
 ];
 let state = null;
 let ws = null;
-let lastImage = -1; // track when image changes
+let lastImage = -1;
 
 function getBackgroundPosition(index){
   return `${(index % 3) * -100}px ${Math.floor(index / 3) * -100}px`;
 }
 
-// create board once per player
 function createBoard(playerIndex){
   const board = document.getElementById("player"+playerIndex).querySelector(".board");
   board.innerHTML = "";
@@ -72,12 +71,10 @@ function createBoard(playerIndex){
   }
 }
 
-// create pieces only when image changes
 function createPieces(playerIndex, currentImage){
   const piecesGrid = document.getElementById("player"+playerIndex).querySelector(".pieces");
   piecesGrid.innerHTML = "";
   const indices = [...Array(9).keys()].sort(()=>Math.random()-0.5);
-
   for(let i=0;i<9;i++){
     const piece = document.createElement("div");
     piece.className = "piece";
@@ -90,16 +87,13 @@ function createPieces(playerIndex, currentImage){
   }
 }
 
-// render boards and pieces
 function render(){
   if(!state) return;
   const currentImage = state.currentImage || 0;
 
-  // update reference image
   const referenceImg = document.getElementById("reference");
   if(referenceImg) referenceImg.src = images[currentImage];
 
-  // update boards
   state.players.forEach((player, p) => {
     const cells = document.getElementById("player"+p).querySelectorAll(".board .cell");
     cells.forEach((cell, i) => {
@@ -114,12 +108,10 @@ function render(){
       }
     });
 
-    // only rebuild pieces if image changed
     if(currentImage !== lastImage){
       createPieces(p, currentImage);
     }
 
-    // hide pieces that are already placed
     const piecesGrid = document.getElementById("player"+p).querySelector(".pieces");
     piecesGrid.querySelectorAll(".piece").forEach(piece => {
       const idx = parseInt(piece.dataset.index);
@@ -135,21 +127,20 @@ function checkComplete(){
   return state.players.some(player => player.board.flat().every(v => v>0));
 }
 
-// websocket
+// secure WebSocket connection
 function connectWebSocket(){
-  ws = new WebSocket(`ws://${location.host}/ws`);
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${protocol}//${location.host}/ws`);
 
   ws.onmessage = e => {
     const msg = JSON.parse(e.data);
     if(msg.type === "state"){
       state = msg.data;
       render();
-
       if(checkComplete() && ws.readyState===WebSocket.OPEN){
         ws.send(JSON.stringify({type:"nextImage"}));
       }
     }
-
     if(msg.type === "invalidMove"){
       document.querySelectorAll(`.piece[data-index="${msg.piece}"]`)
         .forEach(piece=>{
@@ -162,7 +153,6 @@ function connectWebSocket(){
   ws.onclose = ()=>setTimeout(connectWebSocket, 2000);
 }
 
-// initialize boards once
 createBoard(0);
 createBoard(1);
 connectWebSocket();
@@ -171,5 +161,4 @@ connectWebSocket();
 </script>
 
 </body>
-
 </html>
