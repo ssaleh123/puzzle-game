@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>1v1 Puzzle</title>
+<style>
+body { margin:0; background:#222; color:white; font-family:sans-serif; }
+.container { display:flex; justify-content:center; align-items:center; gap:60px; height:100vh; }
+.player { display:flex; flex-direction:column; align-items:center; gap:20px; }
+.grid { display:grid; grid-template-columns:repeat(3,100px); grid-template-rows:repeat(3,100px); gap:4px; }
+.cell { width:100px; height:100px; background-color:#333; border:2px solid #555; background-size:300px 300px; }
+.piece { width:100px; height:100px; border:2px solid #aaa; cursor:grab; background-size:300px 300px; transition:0.2s; }
+.center img { width:300px; }
+.flash-red { border:2px solid red !important; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="player" id="player0">
+    <h2>Player 1</h2>
+    <div class="grid board"></div>
+    <div class="grid pieces"></div>
+  </div>
+
+  <div class="center">
+    <img id="reference" src="">
+  </div>
+
+  <div class="player" id="player1">
+    <h2>Player 2</h2>
+    <div class="grid board"></div>
+    <div class="grid pieces"></div>
+  </div>
+</div>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+
+const images = ["/static/caseoh.jfif","/static/moist_critical.jfif","/static/clix.jfif","/static/amouranth.jfif", "/static/mongraal.jfif","/static/myth.jfif"];
+let state = null;
+let ws = null;
+let lastImage = -1; // track when image changes
+
+function getBackgroundPosition(index){
+  return `${(index % 3) * -100}px ${Math.floor(index / 3) * -100}px`;
+}
+
+// create board once per player
+function createBoard(playerIndex){
+  const board = document.getElementById("player"+playerIndex).querySelector(".board");
+  board.innerHTML = "";
+  for(let i=0;i<9;i++){
+    const cell = document.createElement("div");
+    cell.className="cell";
+    cell.ondragover = e=>e.preventDefault();
+    cell.ondrop = e=>{
+      e.preventDefault();
+      const pieceIndex = parseInt(e.dataTransfer.getData("text/plain"));
+      if(ws && ws.readyState===WebSocket.OPEN){
+        ws.send(JSON.stringify({
+          type:"move",
+          data:{player:playerIndex, x:i%3, y:Math.floor(i/3), piece:pieceIndex}
+        }));
+      }
+    };
+    board.appendChild(cell);
+  }
+}
+
+// create pieces only when image changes
+function createPieces(playerIndex, currentImage){
+  const piecesGrid = document.getElementById("player"+playerIndex).querySelector(".pieces");
+  piecesGrid.innerHTML = "";
+  const indices = [...Array(9).keys()].sort(()=>Math.random()-0.5);
+
+  for(let i=0;i<9;i++){
+    const piece = document.createElement("div");
+    piece.className = "piece";
+    piece.dataset.index = indices[i];
+    piece.draggable = true;
+    piece.style.backgroundImage = `url(${images[currentImage]})`;
+    piece.style.backgroundPosition = getBackgroundPosition(indices[i]);
+    piece.ondragstart = e => e.dataTransfer.setData("text/plain", piece.dataset.index);
+    piecesGrid.appendChild(piece);
+  }
+}
+
+// render boards and pieces
+function render(){
+  if(!state) return;
+  const currentImage = state.currentImage || 0;
+
+  // update reference image
+  const referenceImg = document.getElementById("reference");
+  if(referenceImg) referenceImg.src = images[currentImage];
+
+  // update boards
+  state.players.forEach((player, p) => {
+    const cells = document.getElementById("player"+p).querySelectorAll(".board .cell");
+    cells.forEach((cell, i) => {
+      const y = Math.floor(i/3);
+      const x = i%3;
+      const val = player.board[y][x];
+      if(val > 0){
+        cell.style.backgroundImage = `url(${images[currentImage]})`;
+        cell.style.backgroundPosition = getBackgroundPosition(val-1);
+      } else {
+        cell.style.backgroundImage = "";
+      }
+    });
+
+    // only rebuild pieces if image changed
+    if(currentImage !== lastImage){
+      createPieces(p, currentImage);
+    }
+
+    // hide pieces that are already placed
+    const piecesGrid = document.getElementById("player"+p).querySelector(".pieces");
+    piecesGrid.querySelectorAll(".piece").forEach(piece => {
+      const idx = parseInt(piece.dataset.index);
+      piece.style.visibility = player.pieces[idx] ? "visible" : "hidden";
+    });
+  });
+
+  lastImage = currentImage;
+}
+
+function checkComplete(){
+  if(!state) return false;
+  return state.players.some(player => player.board.flat().every(v => v>0));
+}
+
+// websocket
+function connectWebSocket(){
+  ws = new WebSocket(`ws://${location.host}/ws`);
+
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if(msg.type === "state"){
+      state = msg.data;
+      render();
+
+      if(checkComplete() && ws.readyState===WebSocket.OPEN){
+        ws.send(JSON.stringify({type:"nextImage"}));
+      }
+    }
+
+    if(msg.type === "invalidMove"){
+      document.querySelectorAll(`.piece[data-index="${msg.piece}"]`)
+        .forEach(piece=>{
+          piece.classList.add("flash-red");
+          setTimeout(()=>piece.classList.remove("flash-red"),400);
+        });
+    }
+  };
+
+  ws.onclose = ()=>setTimeout(connectWebSocket, 2000);
+}
+
+// initialize boards once
+createBoard(0);
+createBoard(1);
+connectWebSocket();
+
+});
+</script>
+
+</body>
+</html>
